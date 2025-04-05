@@ -281,8 +281,9 @@ public class TopDownParser : IParser
         return null!;
     }
 
-    private FunctionDeclaration FunctionDeclaration()
+    private IEnumerable<FunctionDeclaration> FunctionDeclaration()
     {
+        List<FunctionDeclaration> functionDeclarations = new List<FunctionDeclaration>();
         Expect("Keyword", "function");
         var ident = Expect("Ident");
 
@@ -291,9 +292,18 @@ public class TopDownParser : IParser
         if (CurrentIs("Ident"))
         {
             var arg = Expect("Ident").Value;
-            Expect("Colon");
-            var type = TypeValue();
-            args.Add(new PropertyTypeValue(arg, type));
+
+            if (CurrentIs("Colon"))
+            {
+                Expect("Colon");
+                var type = TypeValue();
+                args.Add(new PropertyTypeValue(arg, type));
+            } else if (CurrentIs("Assign"))
+            {
+                Expect("Assign");
+                var literal = Literal();
+                args.Add(new PropertyTypeDefaultValue(arg, literal.Type, literal));
+            }
         }
 
         while (CurrentIs("Comma"))
@@ -316,10 +326,15 @@ public class TopDownParser : IParser
             Expect("Colon");
             returnType = TypeValue();
         }
-
+        
+        // Тут нужно сделать декларирование обязательных и необязательных параметров.
         var name = new IdentifierReference(ident.Value) { Segment = ident.Segment };
-        return new FunctionDeclaration(name, returnType, args, BlockStatement())
-            { Segment = ident.Segment };
+
+        
+        functionDeclarations.Add(new FunctionDeclaration(name, returnType, args, BlockStatement())
+            { Segment = ident.Segment }); 
+        
+        return functionDeclarations;
     }
 
     private LexicalDeclaration LexicalDeclaration()

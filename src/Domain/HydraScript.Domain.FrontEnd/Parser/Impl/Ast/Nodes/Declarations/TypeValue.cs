@@ -34,6 +34,15 @@ public record PropertyTypeValue(
         $"{Key}: {TypeValue}";
 }
 
+public record PropertyTypeDefaultValue(
+    string Key,
+    TypeValue TypeValue,
+    AbstractLiteral DefaultValue): PropertyTypeValue(Key, TypeValue)
+{
+    public override string ToString() =>
+        $"{Key}: {TypeValue}: {DefaultValue}";
+}
+
 [AutoVisitable<TypeValue>]
 public partial record ObjectTypeValue(
     IEnumerable<PropertyTypeValue> Properties) : TypeValue
