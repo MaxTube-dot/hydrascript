@@ -317,31 +317,35 @@ public class TopDownParser : IParser
             }
         }
 
-        var rp = Expect("RightParen");
-
         TypeValue returnType = new TypeIdentValue(
             TypeId: new IdentifierReference(name: "undefined")
-                { Segment = rp.Segment });
+                { Segment = Expect("RightParen").Segment });
 
         if (CurrentIs("Colon"))
         {
             Expect("Colon");
             returnType = TypeValue();
         }
-        
-        var name = new IdentifierReference(ident.Value) { Segment = ident.Segment };
-        
-        List<PropertyTypeValue> requiredParameters = args.Where(x=> x is not PropertyTypeDefaultValue).ToList();
-        List<PropertyTypeValue> nonRequiredParameters = args.Where(x=> x is PropertyTypeDefaultValue).ToList();
-        
-        BlockStatement blockStatement = BlockStatement();
-        
-        functionDeclarations.Add(new FunctionDeclaration(name, returnType, requiredParameters, blockStatement) { Segment = ident.Segment });
-        List<PropertyTypeValue> paramsToAdd = new List<PropertyTypeValue>(requiredParameters);
-        foreach (var nonRequiredParameter in nonRequiredParameters)
+
+        var requiredParameters = args.Where(x=> x is not PropertyTypeDefaultValue).ToList();
+        var nonRequiredParameters = args.Where(x=> x is PropertyTypeDefaultValue).ToList();
+        var overloadedFunctions = new List<List<PropertyTypeValue>>() {new(requiredParameters)};
+
+        var paramsToAdd = new List<PropertyTypeValue>(requiredParameters);
+        foreach (var parameter in nonRequiredParameters)
         {
-            paramsToAdd.Add(nonRequiredParameter);
-            functionDeclarations.Add(new FunctionDeclaration(name, returnType,new List<PropertyTypeValue>(paramsToAdd), blockStatement) { Segment = ident.Segment });
+            paramsToAdd.Add(parameter);
+            overloadedFunctions.Add(new(paramsToAdd));
+        }
+
+        var savedTokenIndex = _tokens.Position;
+        foreach (var parameter in overloadedFunctions)
+        {
+            _tokens.SetPosition(savedTokenIndex);
+            var blockStatement = BlockStatement();
+            var name = new IdentifierReference(ident.Value) { Segment = ident.Segment };
+            functionDeclarations.Add(new FunctionDeclaration(name, returnType, parameter, blockStatement) 
+                { Segment = ident.Segment });
         }
         
         return functionDeclarations;

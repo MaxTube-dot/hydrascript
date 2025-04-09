@@ -25,7 +25,7 @@ public class ParserSuccessTestData : IEnumerable<object[]>
 }
 
 /// <summary>
-/// Данные для тестирования декларирования функций при парсинге
+/// Данные для тестирования декларирования функций
 /// </summary>
 public class FunctionDeclarationsTestData : TheoryData<string, List<(string, string[])>>
 {
@@ -40,7 +40,7 @@ public class FunctionDeclarationsTestData : TheoryData<string, List<(string, str
             }
             """,
             [
-                ("someMethod", new string[0]),
+                ("someMethod", Array.Empty<string>()),
                 ("someMethod", ["age: number: 12"])
             ]
         ); 
