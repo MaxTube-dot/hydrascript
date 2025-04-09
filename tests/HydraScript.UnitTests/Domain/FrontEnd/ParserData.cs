@@ -23,3 +23,80 @@ public class ParserSuccessTestData : IEnumerable<object[]>
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }
+
+/// <summary>
+/// Данные для тестирования декларирования функций при парсинге
+/// </summary>
+public class FunctionDeclarationsTestData : TheoryData<string, List<(string, string[])>>
+{
+    public FunctionDeclarationsTestData()
+    {
+        Add(
+            """
+            function someMethod(age=12): number {
+                if (x < 0)
+                    return -x
+                return x
+            }
+            """,
+            [
+                ("someMethod", new string[0]),
+                ("someMethod", ["age: number: 12"])
+            ]
+        ); 
+        Add(
+            """
+            function someMethod(x: number, xxx= "someString", age=12): number {
+                if (x < 0)
+                    return -x
+                return x
+            }
+            """,
+            [
+                ("someMethod", ["x: number"]),
+                ("someMethod", ["x: number", "xxx: string: someString"]),
+                ("someMethod", ["x: number", "xxx: string: someString", "age: number: 12"]),
+            ]
+        );
+
+        Add(
+            """
+            function abs(x: number, xxx= 12): number {
+                if (x < 0)
+                    return -x
+                return x
+            }
+            """,
+            [
+                ("abs", ["x: number"]),
+                ("abs", ["x: number", "xxx: number: 12"])
+            ]
+        );
+        
+        Add(
+            """
+            function abs(x: number): number {
+                if (x < 0)
+                    return -x
+                return x
+            }
+            """,
+            [
+                ("abs", ["x: number"])
+            ]
+        );
+        
+        Add(
+            """
+            function abs(): number {
+                if (x < 0)
+                    return -x
+                return x
+            }
+            """,
+            [
+                ("abs", [])
+            ]
+        );
+    }
+}

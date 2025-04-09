@@ -77,13 +77,13 @@ public class TopDownParser : IParser
             CurrentIsKeyword("type") || CurrentIs("Print")
         )
         {
-            statementList.Add(StatementListItem());
+            statementList.AddRange(StatementListItem());
         }
 
         return statementList;
     }
 
-    private StatementListItem StatementListItem()
+    private IEnumerable<StatementListItem> StatementListItem()
     {
         if (CurrentIsKeyword("function") || CurrentIsKeyword("let") ||
             CurrentIsKeyword("const") || CurrentIsKeyword("type"))
@@ -91,7 +91,7 @@ public class TopDownParser : IParser
             return Declaration();
         }
 
-        return Statement();
+        return [Statement()];
     }
 
     private Statement Statement()
@@ -261,27 +261,31 @@ public class TopDownParser : IParser
         return type;
     }
 
-    private Declaration Declaration()
+    private IEnumerable<Declaration> Declaration()
     {
         if (CurrentIsKeyword("function"))
         {
-            return FunctionDeclaration();
+            return FunctionDeclarations();
         }
 
         if (CurrentIsKeyword("let") || CurrentIsKeyword("const"))
         {
-            return LexicalDeclaration();
+            return [LexicalDeclaration()];
         }
         
         if (CurrentIsKeyword("type"))
         {
-            return TypeDeclaration();
+            return [TypeDeclaration()];
         }
 
         return null!;
     }
 
-    private IEnumerable<FunctionDeclaration> FunctionDeclaration()
+    /// <summary>
+    /// Обработка функции и ее параметров, в том числе параметров по умолчанию.
+    /// </summary>
+    /// <returns></returns>
+    private IEnumerable<FunctionDeclaration> FunctionDeclarations()
     {
         List<FunctionDeclaration> functionDeclarations = new List<FunctionDeclaration>();
         Expect("Keyword", "function");
@@ -289,9 +293,16 @@ public class TopDownParser : IParser
 
         Expect("LeftParen");
         var args = new List<PropertyTypeValue>();
-        if (CurrentIs("Ident"))
+
+        while (CurrentIs("Comma") || CurrentIs("Ident"))
         {
-            var arg = Expect("Ident").Value;
+            string arg = string.Empty;
+
+            if (CurrentIs("Comma"))
+                Expect("Comma");
+            
+            if (CurrentIs("Ident"))
+                arg = Expect("Ident").Value;
 
             if (CurrentIs("Colon"))
             {
@@ -306,15 +317,6 @@ public class TopDownParser : IParser
             }
         }
 
-        while (CurrentIs("Comma"))
-        {
-            Expect("Comma");
-            var arg = Expect("Ident").Value;
-            Expect("Colon");
-            var type = TypeValue();
-            args.Add(new PropertyTypeValue(arg, type));
-        }
-
         var rp = Expect("RightParen");
 
         TypeValue returnType = new TypeIdentValue(
@@ -327,15 +329,25 @@ public class TopDownParser : IParser
             returnType = TypeValue();
         }
         
-        // Тут нужно сделать декларирование обязательных и необязательных параметров.
         var name = new IdentifierReference(ident.Value) { Segment = ident.Segment };
-
         
-        functionDeclarations.Add(new FunctionDeclaration(name, returnType, args, BlockStatement())
-            { Segment = ident.Segment }); 
+        List<PropertyTypeValue> requiredParameters = args.Where(x=> x is not PropertyTypeDefaultValue).ToList();
+        List<PropertyTypeValue> nonRequiredParameters = args.Where(x=> x is PropertyTypeDefaultValue).ToList();
+        
+        BlockStatement blockStatement = BlockStatement();
+        
+        functionDeclarations.Add(new FunctionDeclaration(name, returnType, requiredParameters, blockStatement) { Segment = ident.Segment });
+        List<PropertyTypeValue> paramsToAdd = new List<PropertyTypeValue>(requiredParameters);
+        foreach (var nonRequiredParameter in nonRequiredParameters)
+        {
+            paramsToAdd.Add(nonRequiredParameter);
+            functionDeclarations.Add(new FunctionDeclaration(name, returnType,new List<PropertyTypeValue>(paramsToAdd), blockStatement) { Segment = ident.Segment });
+        }
         
         return functionDeclarations;
     }
+
+    
 
     private LexicalDeclaration LexicalDeclaration()
     {

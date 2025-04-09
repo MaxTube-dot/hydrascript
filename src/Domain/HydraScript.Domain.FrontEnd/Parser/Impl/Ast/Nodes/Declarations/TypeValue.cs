@@ -40,7 +40,7 @@ public record PropertyTypeDefaultValue(
     AbstractLiteral DefaultValue): PropertyTypeValue(Key, TypeValue)
 {
     public override string ToString() =>
-        $"{Key}: {TypeValue}: {DefaultValue}";
+        $"{Key}: {TypeValue}: {DefaultValue.ToValueDto().Value}";
 }
 
 [AutoVisitable<TypeValue>]
